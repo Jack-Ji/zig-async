@@ -1,6 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
-const hasDeinitFn = std.meta.trait.hasFn("deinit");
+const trait = std.meta.trait;
 
 /// Communication channel between threads
 pub fn Channel(comptime T: type) type {
@@ -24,7 +24,7 @@ pub fn Channel(comptime T: type) type {
 
         pub fn deinit(self: *Self) void {
             while (self.fifo.popFirst()) |node| {
-                if (@typeInfo(T) == .Struct and hasDeinitFn(T)) {
+                if (comptime trait.hasFn("deinit")(T)) {
                     node.data.deinit(); // Destroy data when possible
                 }
                 self.allocator.destroy(node);
@@ -48,7 +48,7 @@ pub fn Channel(comptime T: type) type {
 
             pub fn deinit(self: PopResult) void {
                 for (self.nodes.items) |node| {
-                    if (@typeInfo(T) == .Struct and hasDeinitFn(T)) {
+                    if (comptime trait.hasFn("deinit")(T)) {
                         node.data.deinit(); // Destroy data when possible
                     }
                     self.allocator.destroy(node);

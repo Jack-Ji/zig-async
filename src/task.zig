@@ -1,7 +1,7 @@
 const std = @import("std");
 const testing = std.testing;
+const trait = std.meta.trait;
 const builtin = @import("builtin");
-const hasDeinitFn = std.meta.trait.hasFn("deinit");
 
 /// Represent a value returned by async task in the future.
 pub fn Future(comptime T: type) type {
@@ -31,34 +31,34 @@ pub fn Future(comptime T: type) type {
                 // Only detect one layer of optional/error-union
                 switch (@typeInfo(T)) {
                     .Optional => |info| {
-                        if (@typeInfo(info.child) == .Pointer and
-                            @typeInfo(info.child).Pointer.size == .One and
-                            hasDeinitFn(@typeInfo(info.child).Pointer.child))
+                        if (comptime trait.isSingleItemPtr(info.child) and
+                            trait.hasFn("deinit")(@typeInfo(info.child).Pointer.child))
                         {
                             if (data) |d| d.deinit();
-                        } else if (@typeInfo(info.child) == .Struct and hasDeinitFn(info.child)) {
+                        } else if (comptime trait.hasFn("deinit")(info.child)) {
                             if (data) |d| d.deinit();
                         }
                     },
                     .ErrorUnion => |info| {
-                        if (@typeInfo(info.payload) == .Pointer and
-                            @typeInfo(info.payload).Pointer.size == .One and
-                            hasDeinitFn(@typeInfo(info.payload).Pointer.child))
+                        if (comptime trait.isSingleItemPtr(info.payload) and
+                            trait.hasFn("deinit")(@typeInfo(info.payload).Pointer.child))
                         {
                             if (data) |d| d.deinit() else |_| {}
-                        } else if (@typeInfo(info.payload) == .Struct and hasDeinitFn(info.payload)) {
+                        } else if (comptime trait.hasFn("deinit")(info.payload)) {
                             if (data) |d| d.deinit() else |_| {}
                         }
                     },
-                    .Struct => if (hasDeinitFn(T)) data.deinit(),
-                    else => {},
+                    else => {
+                        if (comptime trait.hasFn("deinit")(T)) {
+                            data.deinit();
+                        }
+                    },
                 }
             }
             self.allocator.destroy(self);
         }
 
         /// Wait until data is granted
-        /// WARNING: data must be granted after this call, or the function won't return forever
         pub fn wait(self: *Self) T {
             self.done.wait();
             std.debug.assert(self.data != null);
