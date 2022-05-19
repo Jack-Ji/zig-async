@@ -1,7 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
 const builtin = @import("builtin");
-const channel = @import("channel.zig");
 const hasDeinitFn = std.meta.trait.hasFn("deinit");
 
 /// Represent a value returned by async task in the future.
@@ -32,20 +31,22 @@ pub fn Future(comptime T: type) type {
                 // Only detect one layer of optional/error-union
                 switch (@typeInfo(T)) {
                     .Optional => |info| {
-                        if (std.meta.trait.isSingleItemPtr(info.child) and
+                        if (@typeInfo(info.child) == .Pointer and
+                            @typeInfo(info.child).Pointer.size == .One and
                             hasDeinitFn(@typeInfo(info.child).Pointer.child))
                         {
                             if (data) |d| d.deinit();
-                        } else if (hasDeinitFn(info.child)) {
+                        } else if (@typeInfo(info.child) == .Struct and hasDeinitFn(info.child)) {
                             if (data) |d| d.deinit();
                         }
                     },
                     .ErrorUnion => |info| {
-                        if (std.meta.trait.isSingleItemPtr(info.payload) and
+                        if (@typeInfo(info.payload) == .Pointer and
+                            @typeInfo(info.payload).Pointer.size == .One and
                             hasDeinitFn(@typeInfo(info.payload).Pointer.child))
                         {
                             if (data) |d| d.deinit() else |_| {}
-                        } else if (hasDeinitFn(info.payload)) {
+                        } else if (@typeInfo(info.payload) == .Struct and hasDeinitFn(info.payload)) {
                             if (data) |d| d.deinit() else |_| {}
                         }
                     },
@@ -119,6 +120,7 @@ pub fn Task(comptime fun: anytype) type {
 test "Async Task" {
     if (builtin.single_threaded) return error.SkipZigTest;
 
+    const channel = @import("channel.zig");
     const S = struct {
         const R = struct {
             allocator: std.mem.Allocator,
@@ -152,9 +154,9 @@ test "Async Task" {
             return a + b;
         }
 
-        fn add(f1: *Future(u128), f2: *Future(u128)) u128 {
-            const a = f1.wait();
-            const b = f2.wait();
+        fn add(f1: *Future(?u128), f2: *Future(?u128)) ?u128 {
+            const a = f1.wait().?;
+            const b = f2.wait().?;
             return a + b;
         }
     };
@@ -212,18 +214,17 @@ test "Async Task" {
     {
         const TestTask = Task(S.add);
         var fs: [100]*TestTask.FutureType = undefined;
-        var arena = std.heap.ArenaAllocator.init(std.testing.allocator);
-        defer arena.deinit();
-        fs[0] = try TestTask.FutureType.init(arena.allocator());
-        fs[1] = try TestTask.FutureType.init(arena.allocator());
+        fs[0] = try TestTask.FutureType.init(std.testing.allocator);
+        fs[1] = try TestTask.FutureType.init(std.testing.allocator);
         fs[0].grant(0);
         fs[1].grant(1);
 
         // compute 100th fibonacci number
         var i: u32 = 2;
         while (i < 100) : (i += 1) {
-            fs[i] = try TestTask.launch(arena.allocator(), .{ fs[i - 2], fs[i - 1] });
+            fs[i] = try TestTask.launch(std.testing.allocator, .{ fs[i - 2], fs[i - 1] });
         }
-        try testing.expectEqual(@as(u128, 218922995834555169026), fs[99].wait());
+        try testing.expectEqual(@as(u128, 218922995834555169026), fs[99].wait().?);
+        for (fs) |f| f.deinit();
     }
 }

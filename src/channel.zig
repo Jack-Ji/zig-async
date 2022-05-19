@@ -78,7 +78,7 @@ pub fn Channel(comptime T: type) type {
     };
 }
 
-test "Channel Communication" {
+test "Channel - smoke testing" {
     const MyData = struct {
         d: i32,
 
