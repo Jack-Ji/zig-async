@@ -79,18 +79,6 @@ pub fn Future(comptime T: type) type {
     };
 }
 
-/// Arguments to task
-pub fn TaskArgs(T1: type, T2: type, T3: type, T4: type, T5: type, T6: type) type {
-    return struct {
-        args1: T1,
-        args2: T2,
-        args3: T3,
-        args4: T4,
-        args5: T5,
-        args6: T6,
-    };
-}
-
 /// Async task runs in another thread
 pub fn Task(comptime fun: anytype) type {
     return struct {
