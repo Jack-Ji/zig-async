@@ -44,6 +44,14 @@ Generic message queue used for communicating between threads.
 Capable of free memory automatically if supported by embedded struct (has `deinit` method).
 
 ```zig
+const MyData = struct {
+    d: i32,
+
+    /// Will be called automatically when destorying popped result
+    pub fn deinit(self: *@This()) void {
+    }
+};
+
 const MyChannel = Channel(MyData);
 var channel = try MyChannel.init(std.testing.allocator);
 defer channel.deinit();
