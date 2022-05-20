@@ -34,10 +34,10 @@ pub fn Channel(comptime T: type) type {
 
         /// Push data to channel
         pub fn push(self: *Self, data: T) !void {
-            self.mutex.lock();
-            defer self.mutex.unlock();
             var node = try self.allocator.create(List.Node);
             node.data = data;
+            self.mutex.lock();
+            defer self.mutex.unlock();
             self.fifo.prepend(node);
         }
 
