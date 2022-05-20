@@ -13,7 +13,6 @@ const Result = struct {
     allocator: std.mem.Allocator,
     c: u32,
 
-    /// Will be called automatically when destorying future
     pub fn init(allocator: std.mem.Allocator, _c: u32) !*Self {
         var self = try allocator.create(Self);
         self.* = .{
@@ -23,6 +22,7 @@ const Result = struct {
         return self;
     }
 
+    /// Will be called automatically when destorying future
     pub fn deinit(self: *Self) void {
         self.allocator.destroy(self);
     }
