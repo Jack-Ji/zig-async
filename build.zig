@@ -19,7 +19,7 @@ pub fn build(b: *std.build.Builder) void {
 pub fn getPkg() std.build.Pkg {
     return .{
         .name = "zasync",
-        .path = .{
+        .source = .{
             .path = comptime thisDir() ++ "/src/main.zig",
         },
     };
