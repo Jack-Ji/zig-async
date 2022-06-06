@@ -1,5 +1,4 @@
 const std = @import("std");
-const RingBuffer = @import("ring.zig").RingBuffer;
 const testing = std.testing;
 const trait = std.meta.trait;
 
@@ -7,7 +6,7 @@ const trait = std.meta.trait;
 pub fn Channel(comptime T: type) type {
     return struct {
         const Self = @This();
-        const Deque = RingBuffer(T);
+        const Deque = std.fifo.LinearFifo(T, .Dynamic);
 
         allocator: std.mem.Allocator,
         mutex: std.Thread.Mutex,
@@ -24,8 +23,7 @@ pub fn Channel(comptime T: type) type {
         }
 
         pub fn deinit(self: *Self) void {
-            var it = self.fifo.iter();
-            while (it.next()) |elem| {
+            while (self.fifo.readItem()) |elem| {
                 if (comptime trait.hasFn("deinit")(T)) {
                     elem.deinit(); // Destroy data when possible
                 }
@@ -38,7 +36,7 @@ pub fn Channel(comptime T: type) type {
         pub fn push(self: *Self, data: T) !void {
             self.mutex.lock();
             defer self.mutex.unlock();
-            try self.fifo.pushBack(data);
+            try self.fifo.writeItem(data);
         }
 
         /// Popped data from channel
@@ -66,7 +64,7 @@ pub fn Channel(comptime T: type) type {
             };
             var count = max_pop;
             while (count > 0) : (count -= 1) {
-                if (self.fifo.popFront()) |data| {
+                if (self.fifo.readItem()) |data| {
                     result.elements.append(data) catch unreachable;
                 } else {
                     break;
@@ -79,7 +77,7 @@ pub fn Channel(comptime T: type) type {
         pub fn pop(self: *Self) ?T {
             self.mutex.lock();
             defer self.mutex.unlock();
-            return self.fifo.popFront();
+            return self.fifo.readItem();
         }
     };
 }
@@ -88,7 +86,7 @@ test "Channel - smoke testing" {
     const MyData = struct {
         d: i32,
 
-        pub fn deinit(self: *@This()) void {
+        pub fn deinit(self: @This()) void {
             std.debug.print("\ndeinit mydata, d is {d} ", .{self.d});
         }
     };
