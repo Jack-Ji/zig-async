@@ -1,4 +1,5 @@
 const std = @import("std");
+const RingBuffer = @import("ring.zig").RingBuffer;
 const testing = std.testing;
 const trait = std.meta.trait;
 
@@ -6,74 +7,79 @@ const trait = std.meta.trait;
 pub fn Channel(comptime T: type) type {
     return struct {
         const Self = @This();
-        const List = std.TailQueue(T);
+        const Deque = RingBuffer(T);
 
         allocator: std.mem.Allocator,
         mutex: std.Thread.Mutex,
-        fifo: List,
+        fifo: Deque,
 
         pub fn init(allocator: std.mem.Allocator) !*Self {
             var self = try allocator.create(Self);
             self.* = .{
                 .allocator = allocator,
                 .mutex = std.Thread.Mutex{},
-                .fifo = List{},
+                .fifo = Deque.init(allocator),
             };
             return self;
         }
 
         pub fn deinit(self: *Self) void {
-            while (self.fifo.popFirst()) |node| {
+            var it = self.fifo.iter();
+            while (it.next()) |elem| {
                 if (comptime trait.hasFn("deinit")(T)) {
-                    node.data.deinit(); // Destroy data when possible
+                    elem.deinit(); // Destroy data when possible
                 }
-                self.allocator.destroy(node);
             }
+            self.fifo.deinit();
             self.allocator.destroy(self);
         }
 
         /// Push data to channel
         pub fn push(self: *Self, data: T) !void {
-            var node = try self.allocator.create(List.Node);
-            node.data = data;
             self.mutex.lock();
             defer self.mutex.unlock();
-            self.fifo.prepend(node);
+            try self.fifo.pushBack(data);
         }
 
         /// Popped data from channel
         pub const PopResult = struct {
             allocator: std.mem.Allocator,
-            nodes: std.ArrayList(*List.Node),
+            elements: std.ArrayList(T),
 
             pub fn deinit(self: PopResult) void {
-                for (self.nodes.items) |node| {
+                for (self.elements.items) |*data| {
                     if (comptime trait.hasFn("deinit")(T)) {
-                        node.data.deinit(); // Destroy data when possible
+                        data.deinit(); // Destroy data when possible
                     }
-                    self.allocator.destroy(node);
                 }
-                self.nodes.deinit();
+                self.elements.deinit();
             }
         };
 
-        /// Get data from channel
-        pub fn pop(self: *Self, max_pop: usize) ?PopResult {
+        /// Get data from channel, data will be destroyed together with PopResult
+        pub fn popn(self: *Self, max_pop: usize) ?PopResult {
             self.mutex.lock();
             defer self.mutex.unlock();
             var result = PopResult{
                 .allocator = self.allocator,
-                .nodes = std.ArrayList(*List.Node).init(self.allocator),
+                .elements = std.ArrayList(T).init(self.allocator),
             };
             var count = max_pop;
             while (count > 0) : (count -= 1) {
-                if (self.fifo.pop()) |node| {
-                    result.nodes.append(node) catch unreachable;
+                if (self.fifo.popFront()) |data| {
+                    result.elements.append(data) catch unreachable;
                 } else {
                     break;
                 }
             }
             return if (count == max_pop) null else result;
+        }
+
+        /// Get data from channel, user take ownership
+        pub fn pop(self: *Self) ?T {
+            self.mutex.lock();
+            defer self.mutex.unlock();
+            return self.fifo.popFront();
         }
     };
 }
@@ -97,9 +103,10 @@ test "Channel - smoke testing" {
     try channel.push(.{ .d = 4 });
     try channel.push(.{ .d = 5 });
 
-    var result = channel.pop(3).?;
+    try testing.expect(channel.pop().?.d == 1);
+    var result = channel.popn(3).?;
     defer result.deinit();
-    try testing.expect(result.nodes.items[0].data.d == 1);
-    try testing.expect(result.nodes.items[1].data.d == 2);
-    try testing.expect(result.nodes.items[2].data.d == 3);
+    try testing.expect(result.elements.items[0].d == 2);
+    try testing.expect(result.elements.items[1].d == 3);
+    try testing.expect(result.elements.items[2].d == 4);
 }

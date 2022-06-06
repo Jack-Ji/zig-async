@@ -188,14 +188,14 @@ test "Async Task" {
         try testing.expectEqual(@as(?u32, null), future.timedWait(1));
         try testing.expectEqual(@as(?u32, null), future.timedWait(1));
         try testing.expectEqual(@as(?u32, null), future.timedWait(1));
-        try testing.expectEqual(@as(?channel.Channel(u32).PopResult, null), ch.pop(1));
+        try testing.expectEqual(@as(?u32, null), ch.pop());
         try testing.expectEqual(@as(u32, 3), future.wait());
 
-        var result = ch.pop(3).?;
-        try testing.expectEqual(result.nodes.items.len, 3);
-        try testing.expectEqual(@as(u32, 2), result.nodes.items[0].data);
-        try testing.expectEqual(@as(u32, 4), result.nodes.items[1].data);
-        try testing.expectEqual(@as(u32, 8), result.nodes.items[2].data);
+        var result = ch.popn(3).?;
+        try testing.expectEqual(result.elements.items.len, 3);
+        try testing.expectEqual(@as(u32, 2), result.elements.items[0]);
+        try testing.expectEqual(@as(u32, 4), result.elements.items[1]);
+        try testing.expectEqual(@as(u32, 8), result.elements.items[2]);
         result.deinit();
     }
 
