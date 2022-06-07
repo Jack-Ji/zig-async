@@ -62,9 +62,11 @@ try channel.push(.{ .d = 3 });
 try channel.push(.{ .d = 4 });
 try channel.push(.{ .d = 5 });
 
-var result = channel.pop(3).?;
+try testing.expect(channel.pop().?.d, 1);
+
+var result = channel.popn(3).?;
 defer result.deinit();
-try testing.expect(result.nodes.items[0].data.d == 1);
-try testing.expect(result.nodes.items[1].data.d == 2);
-try testing.expect(result.nodes.items[2].data.d == 3);
+try testing.expect(result.elements[0].d == 2);
+try testing.expect(result.elements[1].d == 3);
+try testing.expect(result.elements[2].d == 4);
 ```
