@@ -90,7 +90,7 @@ pub fn Task(comptime fun: anytype) type {
         /// Internal thread function, run user's function and
         /// grant result to future.
         fn task(future: *FutureType, args: ArgsType) void {
-            const ret = @call(.{}, fun, args);
+            const ret = @call(.auto, fun, args);
             future.grant(ret);
         }
 
