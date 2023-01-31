@@ -109,6 +109,7 @@ test "Async Task" {
     if (builtin.single_threaded) return error.SkipZigTest;
 
     const channel = @import("channel.zig");
+    const Channel = channel.Channel;
     const S = struct {
         const R = struct {
             allocator: std.mem.Allocator,
@@ -132,7 +133,7 @@ test "Async Task" {
 
         fn return_nothing() void {}
 
-        fn long_work(ch: *channel.Channel(u32), a: u32, b: u32) u32 {
+        fn long_work(ch: *Channel(u32), a: u32, b: u32) u32 {
             std.time.sleep(std.time.ns_per_s);
             ch.push(std.math.pow(u32, a, 1)) catch unreachable;
             std.time.sleep(std.time.ns_per_ms * 10);
