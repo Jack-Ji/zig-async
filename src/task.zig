@@ -13,7 +13,7 @@ pub fn Future(comptime T: type) type {
         data: ?T,
 
         pub fn init(allocator: std.mem.Allocator) !*Self {
-            var self = try allocator.create(Self);
+            const self = try allocator.create(Self);
             self.* = .{
                 .allocator = allocator,
                 .done = .{},
@@ -123,7 +123,7 @@ test "Async Task" {
 
         fn div(allocator: std.mem.Allocator, a: u32, b: u32) !*R {
             if (b == 0) return error.DivisionByZero;
-            var r = try allocator.create(R);
+            const r = try allocator.create(R);
             r.* = .{
                 .allocator = allocator,
                 .v = @divTrunc(a, b),

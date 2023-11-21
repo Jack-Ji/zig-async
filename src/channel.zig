@@ -13,7 +13,7 @@ pub fn Channel(comptime T: type) type {
         fifo: Deque,
 
         pub fn init(allocator: std.mem.Allocator) !*Self {
-            var self = try allocator.create(Self);
+            const self = try allocator.create(Self);
             self.* = .{
                 .allocator = allocator,
                 .mutex = std.Thread.Mutex{},
