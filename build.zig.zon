@@ -1,0 +1,12 @@
+.{
+    .name = "async",
+    .version = "0.1.0",
+    .dependencies = .{},
+    .paths = .{
+        "README.md",
+        "LICENSE",
+        "build.zig",
+        "build.zig.zon",
+        "src",
+    },
+}

@@ -1,6 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
-const trait = std.meta.trait;
+const trait = std.meta;
 const builtin = @import("builtin");
 
 /// Represent a value returned by async task in the future.
@@ -31,25 +31,25 @@ pub fn Future(comptime T: type) type {
                 // Only detect one layer of optional/error-union
                 switch (@typeInfo(T)) {
                     .Optional => |info| {
-                        if (comptime trait.isSingleItemPtr(info.child) and
-                            trait.hasFn("deinit")(@typeInfo(info.child).Pointer.child))
+                        if (comptime isSingleItemPtr(info.child) and
+                            trait.hasFn(@typeInfo(info.child), "deinit"))
                         {
                             if (data) |d| d.deinit();
-                        } else if (comptime trait.hasFn("deinit")(info.child)) {
+                        } else if (comptime trait.hasFn(info.child, "deinit")) {
                             if (data) |d| d.deinit();
                         }
                     },
                     .ErrorUnion => |info| {
-                        if (comptime trait.isSingleItemPtr(info.payload) and
-                            trait.hasFn("deinit")(@typeInfo(info.payload).Pointer.child))
+                        if (comptime isSingleItemPtr(info.payload) and
+                            trait.hasFn(@typeInfo(info.payload).Pointer.child, "deinit"))
                         {
                             if (data) |d| d.deinit() else |_| {}
-                        } else if (comptime trait.hasFn("deinit")(info.payload)) {
+                        } else if (comptime trait.hasFn(info.payload, "deinit")) {
                             if (data) |d| d.deinit() else |_| {}
                         }
                     },
                     else => {
-                        if (comptime trait.hasFn("deinit")(T)) {
+                        if (comptime trait.hasFn(T, "deinit")) {
                             data.deinit();
                         }
                     },
@@ -103,6 +103,13 @@ pub fn Task(comptime fun: anytype) type {
             return future;
         }
     };
+}
+
+pub fn isSingleItemPtr(comptime T: type) bool {
+    if (comptime @typeInfo(T) == .Pointer) {
+        return @typeInfo(T).Pointer.size == .One;
+    }
+    return false;
 }
 
 test "Async Task" {
@@ -216,4 +223,12 @@ test "Async Task" {
         try testing.expectEqual(@as(u128, 218922995834555169026), fs[99].wait().?);
         for (fs) |f| f.deinit();
     }
+}
+
+test "isSingleItemPtr" {
+    const array = [_]u8{0} ** 10;
+    comptime try testing.expect(isSingleItemPtr(@TypeOf(&array[0])));
+    comptime try testing.expect(!isSingleItemPtr(@TypeOf(array)));
+    const runtime_zero: usize = 0;
+    try testing.expect(!isSingleItemPtr(@TypeOf(array[runtime_zero..1])));
 }

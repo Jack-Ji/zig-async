@@ -1,6 +1,6 @@
 const std = @import("std");
 const testing = std.testing;
-const trait = std.meta.trait;
+const trait = std.meta;
 
 /// Communication channel between threads
 pub fn Channel(comptime T: type) type {
@@ -24,7 +24,7 @@ pub fn Channel(comptime T: type) type {
 
         pub fn deinit(self: *Self) void {
             while (self.fifo.readItem()) |elem| {
-                if (comptime trait.hasFn("deinit")(T)) {
+                if (comptime trait.hasFn(T, "deinit")) {
                     elem.deinit(); // Destroy data when possible
                 }
             }
@@ -46,7 +46,7 @@ pub fn Channel(comptime T: type) type {
 
             pub fn deinit(self: PopResult) void {
                 for (self.elements.items) |*data| {
-                    if (comptime trait.hasFn("deinit")(T)) {
+                    if (comptime trait.hasFn(T, "deinit")) {
                         data.deinit(); // Destroy data when possible
                     }
                 }
