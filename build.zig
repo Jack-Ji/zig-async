@@ -1,13 +1,9 @@
 const std = @import("std");
 
 pub fn build(b: *std.Build) void {
-    const lib = b.addStaticLibrary(.{
-        .name = "async",
-        .root_source_file = b.path("src/main.zig"),
-        .target = b.standardTargetOptions(.{}),
-        .optimize = b.standardOptimizeOption(.{}),
+    _ = b.addModule("async", .{
+        .root_source_file = .{ .path = "src/main.zig" },
     });
-    b.installArtifact(lib);
 
     const main_tests = b.addTest(.{
         .root_source_file = .{ .path = "src/main.zig" },
