@@ -30,7 +30,7 @@ pub fn Future(comptime T: type) type {
                 // Destroy data when possible
                 // Only detect one layer of optional/error-union
                 switch (@typeInfo(T)) {
-                    .Optional => |info| {
+                    .optional => |info| {
                         if (comptime isSingleItemPtr(info.child) and
                             trait.hasFn(@typeInfo(info.child), "deinit"))
                         {
@@ -39,7 +39,7 @@ pub fn Future(comptime T: type) type {
                             if (data) |d| d.deinit();
                         }
                     },
-                    .ErrorUnion => |info| {
+                    .error_union => |info| {
                         if (comptime isSingleItemPtr(info.payload) and
                             trait.hasFn(@typeInfo(info.payload).Pointer.child, "deinit"))
                         {
@@ -84,7 +84,7 @@ pub fn Task(comptime fun: anytype) type {
     return struct {
         pub const FunType = @TypeOf(fun);
         pub const ArgsType = std.meta.ArgsTuple(FunType);
-        pub const ReturnType = @typeInfo(FunType).Fn.return_type.?;
+        pub const ReturnType = @typeInfo(FunType).@"fn".return_type.?;
         pub const FutureType = Future(ReturnType);
 
         /// Internal thread function, run user's function and
